@@ -70,17 +70,49 @@ print(naive_gravitational(qs,zs2,z))
 
 
 
-'''n,N=3,150
-class Box(): pass
-levels=[[Box(0,(0,0))]]+[[] for _ in range(n)]
-for level in range(n):
+n,N=3,150
+class Box():
+  def __init__(self,level,i,j):
+    self.level,self.i,self.j,self.points=level,i,j,[]
+    self.center=complex((i+0.5)*pow(2,-level)-0.5,(j+0.5)*pow(2,-level)-0.5)
+  def __str__(self):
+    return str(self.i)+','+str(self.j)
 
+levels=[]
+for level in range(n+1):
+  levels.append([])
+  for i in range(2**level):
+    levels[-1].append([])
+    for j in range(2**level):
+      levels[-1][-1].append(Box(level,i,j))
+
+[[print(*row) for row in l] for l in levels]
 
 points=[(random.random()-0.5,random.random()-0.5) for _ in range(N)]
 for x,y in points:
-  
+  i,j=int((x+0.5)*2**n), int((y+0.5)*2**n)
+  levels[-1][i][j].points.append((x,y))
 
 #Step 1
-for box in levels[-1]:
-  
-'''
+for row in levels[-1]:
+  for box in row:
+    box.Q, box.Phi = create_gravitational_me([1 for _ in range(N)],
+                                             [complex(*x)-box.center for x in box.points])
+#Step 2
+for level in range(n-1,-1,-1):
+  for row in levels[level]:
+    for box in row:
+      box.Phi=[0 for _ in range(p)]
+      box.Q=0
+      for di in range(2):
+        for dj in range(2):
+          child = levels[level+1][box.i*2+di][box.j*2+dj]
+          shifted=shift_outer_me(child.Q, child.Phi, box.center-child.center)
+          box.Phi=[x+y for x,y in zip(box.Phi,shifted)]
+          box.Q+=child.Q
+
+#for level in range(1,n):
+  #for row in levels[level]:
+    #for box in row:
+      
+
