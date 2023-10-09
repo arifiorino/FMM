@@ -1,77 +1,29 @@
 import cmath, math, random, time, matplotlib.pyplot as plt
 
-
-#Theorem 2.1
-def naive_potential(qs,zs,z):
-  return sum(qi*cmath.log(z-zi) for qi,zi in zip(qs,zs))
-def create_potential_me(qs,zs):
-  return (sum(qs), [sum(-qi*pow(zi,k)/k for (qi,zi) in zip(qs,zs)) for k in range(1,p+1)])
-def run_potential_me(Q,aks,z):
-  return Q*cmath.log(z)+sum(aks[k-1]/pow(z,k) for k in range(1,p+1))
-
-
 def naive_gravitational(qs,zs,z):
   return sum(qi/(z-zi) for qi,zi in zip(qs,zs))
-create_gravitational_me = create_potential_me
+
+#Theorem 2.1
+def create_gravitational_me(qs,zs):
+  return (sum(qs), [sum(-qi*pow(zi,k)/k for (qi,zi) in zip(qs,zs)) for k in range(1,p+1)])
 def run_gravitational_me(Q,aks,z):
   return Q/z+sum(-k*aks[k-1]/pow(z,k+1) for k in range(1,p+1))
-
-
-'''
-zs=[(1,1),(-1,1),(1,-1),(-1,-1)]
-qs=[1,1,1,1]
-z=(10,10)
-
-zs=[complex(*x) for x in zs]
-z=complex(*z)
-
-Q,aks = create_gravitational_me(qs,zs)
-print(run_gravitational_me(Q,aks,z))
-print(naive_gravitational(qs,zs,z))
-'''
-
 
 #Lemma 2.3
 def shift_outer_me(a0, aks, z0):
   return [sum(aks[k-1]*pow(z0,l-k)*math.comb(l-1,k-1) for k in range(1,l+1)) - a0*pow(z0,l)/l for l in range(1,p+1)]
-'''
-aks=shift_outer_me(Q,aks,5+5j)
-print(run_gravitational_me(Q,aks,z))
-zs2=[(6,6),(4,6),(6,4),(4,4)]
-zs2=[complex(*x) for x in zs2]
-# we have aks == create_gravitational_me(qs,zs2)
-print(naive_gravitational(qs,zs2,z))
-'''
-
 
 #Lemma 2.4
 def shift_inner_me(a0,aks,z0):
   return [sum(aks[k-1]/pow(z0,k)*pow(-1,k) for k in range(1,p+1)) + a0*cmath.log(-z0)] +\
          [(1/pow(z0,l) * sum(aks[k-1]/pow(z0,k)*math.comb(l+k-1,k-1)*pow(-1,k) for k in range(1,p+1))) - a0/(l*pow(z0,l))
              for l in range(1,p+1)]
-def run_potential_inner_me(bs,z):
-  return sum(bs[l]*pow(z,l) for l in range(p+1))
 def run_gravitational_inner_me(bs,z):
   return sum(l*bs[l]*pow(z,l-1) for l in range(p+1))
-'''
-_,aks = create_gravitational_me(qs,zs)
-aks=shift_inner_me(Q,aks,5+5j)
-z=1+0j
-print(run_gravitational_inner_me(aks,z))
-zs2=[(6,6),(4,6),(6,4),(4,4)]
-zs2=[complex(*x) for x in zs2]
-print(naive_gravitational(qs,zs2,z))
-'''
 
 #Lemma 2.5
 def shift_power_series_center(aks,z0):
   return [sum(aks[k]*math.comb(k,l)*pow(-z0,k-l) for k in range(l,p+1)) for l in range(p+1)]
-'''
-aks=shift_power_series_center(aks,-1-1j)
-print(run_gravitational_inner_me(aks,-2-2j))
-_,aks = create_gravitational_me(qs,zs2)
-print(naive_gravitational(qs,zs2,-1-1j))
-'''
 
 class Box():
   def __init__(self,level,i,j):
@@ -115,15 +67,6 @@ def FMM(n,N,p):
       box.Q, box.Phi = create_gravitational_me([1 for _ in range(len(box.particles))],
                                                [x-box.center for x in box.particles])
 
-  '''
-  tmp=boxes[-1][-1][-1]
-  c=-1-1j
-  #print(tmp.center,c-tmp.center)
-  print(run_gravitational_me(tmp.Q,tmp.Phi,c-tmp.center))
-  #print([x+tmp.center for x in tmp.particles])
-  print(naive_gravitational([1]*len(tmp.particles),tmp.particles,c))
-  '''
-
   #Step 2
   for level in range(n-1,-1,-1):
     for row in boxes[level]:
@@ -134,16 +77,6 @@ def FMM(n,N,p):
             shifted=shift_outer_me(child.Q, child.Phi, child.center-box.center)
             box.Phi=[x+y for x,y in zip(box.Phi,shifted)]
             box.Q+=child.Q
-
-  '''
-  tmp=boxes[-2][-1][-1]
-  c=-1-1j
-  print(run_gravitational_me(tmp.Q,tmp.Phi,c-tmp.center))
-  tmp2=boxes[-1][-1][-1].particles+boxes[-1][-1][-2].particles+boxes[-1][-2][-1].particles+boxes[-1][-2][-2].particles
-  print(naive_gravitational([1]*len(tmp2),tmp2,c))
-  '''
-
-
 
   #Step 3
   for level in range(1,n):
@@ -206,16 +139,6 @@ def naive_forces(particles_final):
     particles_set.add(particle)
   return forces_manual
 
-N=100
-p=100
-n=3
-particles,forces_FMM = FMM(n,N,p)
-forces_manual = naive_forces(particles)
-for _ in range(5):
-  i=random.randint(0,N-1)
-  print(forces_FMM[i],'=?',forces_manual[i])
-input('?')
-
 p = 30
 n = 4
 Ns,FMM_timings,naive_timings=[],[],[]
@@ -232,8 +155,11 @@ for N in range(1000,15001,1000):
   for _ in range(5):
     i=random.randint(0,N-1)
     print(forces_FMM[i],'=?',forces_manual[i])
-plt.plot(Ns,FMM_timings)
-plt.plot(Ns,naive_timings)
+plt.plot(Ns,naive_timings,label="Naive")
+plt.plot(Ns,FMM_timings,label="FMM")
+plt.xlabel("N")
+plt.ylabel("Runtime (s)")
+plt.legend()
 plt.show()
 
 
