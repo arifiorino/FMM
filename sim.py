@@ -155,9 +155,7 @@ for N in range(1000,15001,1000):
   print('N:',N)
   print('FMM Time:',t2-t1)
   print('Naive Time:',t3-t2)
-  for _ in range(5):
-    i=random.randint(0,N-1)
-    print('  err:',abs(forces_FMM[i]-forces_manual[i]))
+  print('L-infinity error:',max([abs(a-b) for a,b in zip(forces_FMM,forces_manual)]))
 plt.plot(Ns,naive_timings,label="Naive")
 plt.plot(Ns,FMM_timings,label="FMM")
 plt.xlabel("N")
