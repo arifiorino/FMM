@@ -1,8 +1,5 @@
-import cmath, math, random
+import cmath, math, random, time, matplotlib.pyplot as plt
 
-p = 20
-N = 1000
-n=int(math.log(N)/math.log(10))
 
 #Theorem 2.1
 def naive_potential(qs,zs,z):
@@ -87,135 +84,157 @@ class Box():
   def __str__(self):
     return str(self.i)+','+str(self.j)
 
-boxes=[]
-for level in range(n+1):
-  boxes.append([])
-  for i in range(2**level):
-    boxes[-1].append([])
-    for j in range(2**level):
-      boxes[-1][-1].append(Box(level,i,j))
+def FMM(n,N,p):
+  boxes=[]
+  for level in range(n+1):
+    boxes.append([])
+    for i in range(2**level):
+      boxes[-1].append([])
+      for j in range(2**level):
+        boxes[-1][-1].append(Box(level,i,j))
 
-particles=[(random.random()-0.5,random.random()-0.5) for _ in range(N)]
-for x,y in particles:
-  i,j=int((x+0.5)*2**n), int((y+0.5)*2**n)
-  boxes[-1][i][j].particles.append(complex(x,y))
+  particles=[(random.random()-0.5,random.random()-0.5) for _ in range(N)]
+  for x,y in particles:
+    i,j=int((x+0.5)*2**n), int((y+0.5)*2**n)
+    boxes[-1][i][j].particles.append(complex(x,y))
 
-def get_interaction_list(level,i,j):
-  r=[]
-  for di1 in range(-1,2):
-    for dj1 in range(-1,2):
-      for di2 in range(2):
-        for dj2 in range(2):
-          i2,j2=(i//2+di1)*2+di2 ,(j//2+dj1)*2+dj2
-          if i2 in range(2**level) and j2 in range(2**level) and (abs(i2-i)>1 or abs(j2-j)>1):
-            r.append((i2,j2))
-  return r
+  def get_interaction_list(level,i,j):
+    r=[]
+    for di1 in range(-1,2):
+      for dj1 in range(-1,2):
+        for di2 in range(2):
+          for dj2 in range(2):
+            i2,j2=(i//2+di1)*2+di2 ,(j//2+dj1)*2+dj2
+            if i2 in range(2**level) and j2 in range(2**level) and (abs(i2-i)>1 or abs(j2-j)>1):
+              r.append((i2,j2))
+    return r
 
-#Step 1
-print('Step 1')
-for row in boxes[-1]:
-  for box in row:
-    box.Q, box.Phi = create_gravitational_me([1 for _ in range(len(box.particles))],
-                                             [x-box.center for x in box.particles])
-
-'''
-tmp=boxes[-1][-1][-1]
-c=-1-1j
-#print(tmp.center,c-tmp.center)
-print(run_gravitational_me(tmp.Q,tmp.Phi,c-tmp.center))
-#print([x+tmp.center for x in tmp.particles])
-print(naive_gravitational([1]*len(tmp.particles),tmp.particles,c))
-'''
-
-#Step 2
-print('Step 2')
-for level in range(n-1,-1,-1):
-  for row in boxes[level]:
+  #Step 1
+  for row in boxes[-1]:
     for box in row:
-      for di in range(2):
-        for dj in range(2):
-          child = boxes[level+1][box.i*2+di][box.j*2+dj]
-          shifted=shift_outer_me(child.Q, child.Phi, child.center-box.center)
-          box.Phi=[x+y for x,y in zip(box.Phi,shifted)]
-          box.Q+=child.Q
+      box.Q, box.Phi = create_gravitational_me([1 for _ in range(len(box.particles))],
+                                               [x-box.center for x in box.particles])
 
-'''
-tmp=boxes[-2][-1][-1]
-c=-1-1j
-print(run_gravitational_me(tmp.Q,tmp.Phi,c-tmp.center))
-tmp2=boxes[-1][-1][-1].particles+boxes[-1][-1][-2].particles+boxes[-1][-2][-1].particles+boxes[-1][-2][-2].particles
-print(naive_gravitational([1]*len(tmp2),tmp2,c))
-'''
+  '''
+  tmp=boxes[-1][-1][-1]
+  c=-1-1j
+  #print(tmp.center,c-tmp.center)
+  print(run_gravitational_me(tmp.Q,tmp.Phi,c-tmp.center))
+  #print([x+tmp.center for x in tmp.particles])
+  print(naive_gravitational([1]*len(tmp.particles),tmp.particles,c))
+  '''
+
+  #Step 2
+  for level in range(n-1,-1,-1):
+    for row in boxes[level]:
+      for box in row:
+        for di in range(2):
+          for dj in range(2):
+            child = boxes[level+1][box.i*2+di][box.j*2+dj]
+            shifted=shift_outer_me(child.Q, child.Phi, child.center-box.center)
+            box.Phi=[x+y for x,y in zip(box.Phi,shifted)]
+            box.Q+=child.Q
+
+  '''
+  tmp=boxes[-2][-1][-1]
+  c=-1-1j
+  print(run_gravitational_me(tmp.Q,tmp.Phi,c-tmp.center))
+  tmp2=boxes[-1][-1][-1].particles+boxes[-1][-1][-2].particles+boxes[-1][-2][-1].particles+boxes[-1][-2][-2].particles
+  print(naive_gravitational([1]*len(tmp2),tmp2,c))
+  '''
 
 
 
-#Step 3
-print('Step 3')
-for level in range(1,n):
-  for row in boxes[level]:
+  #Step 3
+  for level in range(1,n):
+    for row in boxes[level]:
+      for box in row:
+        for i,j in get_interaction_list(level,box.i,box.j):
+          box2=boxes[level][i][j]
+          shifted = shift_inner_me(box2.Q,box2.Phi,box2.center-box.center)
+          box.Psi=[x+y for x,y in zip(box.Psi,shifted)]
+        box.Psi=[x+y for x,y in zip(box.Psi,box.Psi2)]
+    for row in boxes[level]:
+      for box in row:
+        for di in range(2):
+          for dj in range(2):
+            child = boxes[level+1][box.i*2+di][box.j*2+dj]
+            shifted = shift_power_series_center(box.Psi, child.center-box.center) #not sure
+            child.Psi2=shifted
+
+  #Step 4
+  for row in boxes[n]:
     for box in row:
-      for i,j in get_interaction_list(level,box.i,box.j):
-        box2=boxes[level][i][j]
+      for i,j in get_interaction_list(n,box.i,box.j):
+        box2=boxes[n][i][j]
         shifted = shift_inner_me(box2.Q,box2.Phi,box2.center-box.center)
         box.Psi=[x+y for x,y in zip(box.Psi,shifted)]
       box.Psi=[x+y for x,y in zip(box.Psi,box.Psi2)]
-  for row in boxes[level]:
+
+  #Step 5
+  for row in boxes[n]:
     for box in row:
-      for di in range(2):
-        for dj in range(2):
-          child = boxes[level+1][box.i*2+di][box.j*2+dj]
-          shifted = shift_power_series_center(box.Psi, child.center-box.center) #not sure
-          child.Psi2=shifted
+      neighbor_particles=set()
+      for i in range(box.i-1,box.i+2):
+        for j in range(box.j-1,box.j+2):
+          if i in range(2**n) and j in range(2**n):
+            neighbor_particles.update(boxes[n][i][j].particles)
+      box.forces=[]
+      for x in box.particles:
+        neighbor_particles.remove(x)
+        box.forces.append(naive_gravitational([1]*len(neighbor_particles),neighbor_particles,x))
+        neighbor_particles.add(x)
 
-#Step 4
-print('Step 4')
-for row in boxes[n]:
-  for box in row:
-    for i,j in get_interaction_list(n,box.i,box.j):
-      box2=boxes[n][i][j]
-      shifted = shift_inner_me(box2.Q,box2.Phi,box2.center-box.center)
-      box.Psi=[x+y for x,y in zip(box.Psi,shifted)]
-    box.Psi=[x+y for x,y in zip(box.Psi,box.Psi2)]
-
-#Step 5
-print('Step 5')
-for row in boxes[n]:
-  for box in row:
-    neighbor_particles=set()
-    for i in range(box.i-1,box.i+2):
-      for j in range(box.j-1,box.j+2):
-        if i in range(2**n) and j in range(2**n):
-          neighbor_particles.update(boxes[n][i][j].particles)
-    box.forces=[]
-    for x in box.particles:
-      neighbor_particles.remove(x)
-      box.forces.append(naive_gravitational([1]*len(neighbor_particles),neighbor_particles,x))
-      neighbor_particles.add(x)
-
-#Step 6 + 7
-print('Step 6 + 7')
-particles_final=[]
-forces_final=[]
-for row in boxes[n]:
-  for box in row:
-    for i,x in enumerate(box.particles):
-      box.forces[i]+=run_gravitational_inner_me(box.Psi,x-box.center)
-      particles_final.append(x)
-      forces_final.append(box.forces[i])
+  #Step 6 + 7
+  particles_final=[]
+  forces_final=[]
+  for row in boxes[n]:
+    for box in row:
+      for i,x in enumerate(box.particles):
+        box.forces[i]+=run_gravitational_inner_me(box.Psi,x-box.center)
+        particles_final.append(x)
+        forces_final.append(box.forces[i])
+  return particles_final,forces_final
 
 
-print(len(particles_final),len(forces_final))
-forces_manual=[]
-particles_set=set(particles_final)
-for particle in particles_final:
-  particles_set.remove(particle)
-  forces_manual.append(naive_gravitational([1]*len(particles_set),particles_set,particle))
-  particles_set.add(particle)
+def naive_forces(particles_final):
+  forces_manual=[]
+  particles_set=set(particles_final)
+  for particle in particles_final:
+    particles_set.remove(particle)
+    forces_manual.append(naive_gravitational([1]*len(particles_set),particles_set,particle))
+    particles_set.add(particle)
+  return forces_manual
 
+N=100
+p=100
+n=3
+particles,forces_FMM = FMM(n,N,p)
+forces_manual = naive_forces(particles)
 for _ in range(5):
   i=random.randint(0,N-1)
-  print(forces_final[i],'=?',forces_manual[i])
+  print(forces_FMM[i],'=?',forces_manual[i])
+input('?')
 
+p = 30
+n = 4
+Ns,FMM_timings,naive_timings=[],[],[]
+for N in range(1000,15001,1000):
+  Ns.append(N)
+  t1=time.time()
+  particles,forces_FMM = FMM(n,N,p)
+  t2=time.time()
+  forces_manual = naive_forces(particles)
+  t3=time.time()
+  FMM_timings.append(t2-t1)
+  naive_timings.append(t3-t2)
+  print(N,t2-t1,t3-t2)
+  for _ in range(5):
+    i=random.randint(0,N-1)
+    print(forces_FMM[i],'=?',forces_manual[i])
+plt.plot(Ns,FMM_timings)
+plt.plot(Ns,naive_timings)
+plt.show()
 
 
 
