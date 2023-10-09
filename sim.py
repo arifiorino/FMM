@@ -92,7 +92,7 @@ def FMM(n,N,p):
         for di in range(2):
           for dj in range(2):
             child = boxes[level+1][box.i*2+di][box.j*2+dj]
-            shifted = shift_power_series_center(box.Psi, child.center-box.center) #not sure
+            shifted = shift_power_series_center(box.Psi, box.center-child.center)
             child.Psi2=shifted
 
   #Step 4
@@ -139,6 +139,7 @@ def naive_forces(particles_final):
     particles_set.add(particle)
   return forces_manual
 
+
 p = 30
 n = 4
 Ns,FMM_timings,naive_timings=[],[],[]
@@ -151,10 +152,12 @@ for N in range(1000,15001,1000):
   t3=time.time()
   FMM_timings.append(t2-t1)
   naive_timings.append(t3-t2)
-  print(N,t2-t1,t3-t2)
+  print('N:',N)
+  print('FMM Time:',t2-t1)
+  print('Naive Time:',t3-t2)
   for _ in range(5):
     i=random.randint(0,N-1)
-    print(forces_FMM[i],'=?',forces_manual[i])
+    print('  err:',abs(forces_FMM[i]-forces_manual[i]))
 plt.plot(Ns,naive_timings,label="Naive")
 plt.plot(Ns,FMM_timings,label="FMM")
 plt.xlabel("N")
